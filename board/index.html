@@ -196,8 +196,19 @@
     if (x.image) {
       const img = document.createElement("img");
       img.className = "photo";
-      img.src = x.image;
+      // ボードは外部の画像を読めないので、photos/ の写真はボードに一緒に載せた控えを表示する
+      const m = x.image.match(/\/photos\/([^/?#]+)$/);
+      img.src = m ? "photos/" + m[1] : x.image;
       img.alt = "投稿に使う写真";
+      img.onerror = () => {
+        const a = document.createElement("a");
+        a.href = x.image;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.className = "product";
+        a.textContent = "写真をここで表示できなかった。タップで開く";
+        img.replaceWith(a);
+      };
       el.append(img);
     }
 
