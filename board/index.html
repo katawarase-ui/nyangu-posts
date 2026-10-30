@@ -1,0 +1,313 @@
+<title>にゃん具 投稿承認ボード</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  /* 縦一列のカード。上に「今日のやること」、下に日付ごとの下書き。スマホで親指だけで承認できる配置 */
+  :root {
+    --bg: #f6f4f1;
+    --surface: #ffffff;
+    --fg: #2b2622;
+    --muted: #7a7068;
+    --line: #e4ded7;
+    --accent: #c2603c;       /* 楽天Roomの朱に寄せた肉球色 */
+    --accent-fg: #ffffff;
+    --ok: #2f7d4f;
+    --ok-bg: #e3f1e8;
+    --warn: #9a6a00;
+    --warn-bg: #fbf0d6;
+    --bad: #b03a2e;
+    --bad-bg: #f8e1de;
+    --info: #3b5f8a;
+    --info-bg: #e2eaf4;
+    --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Noto Sans JP", sans-serif;
+    --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1d1a18; --surface: #272320; --fg: #efe9e3; --muted: #a79d94; --line: #3a3430;
+      --accent: #e0805c; --accent-fg: #1d1a18;
+      --ok: #7fcf9c; --ok-bg: #22352a; --warn: #e5c069; --warn-bg: #3a3020;
+      --bad: #f09488; --bad-bg: #3d2522; --info: #9dbbe0; --info-bg: #243142;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1d1a18; --surface: #272320; --fg: #efe9e3; --muted: #a79d94; --line: #3a3430;
+    --accent: #e0805c; --accent-fg: #1d1a18;
+    --ok: #7fcf9c; --ok-bg: #22352a; --warn: #e5c069; --warn-bg: #3a3020;
+    --bad: #f09488; --bad-bg: #3d2522; --info: #9dbbe0; --info-bg: #243142;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.7;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 48px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.5rem; margin: 0; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: .85rem; margin: 2px 0 0; }
+  .summary { display: flex; gap: 8px; flex-wrap: wrap; }
+  .summary span { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .summary b { color: var(--accent); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; }
+  .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+  .day { display: flex; flex-direction: column; gap: 12px; }
+  .day h2 { font-family: var(--font-display); font-size: 1rem; margin: 8px 0 0; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: .8rem; }
+  .chip { border-radius: 6px; padding: 1px 8px; background: var(--bg); color: var(--muted); }
+  .chip.threads { background: var(--fg); color: var(--bg); }
+  .chip.instagram { background: var(--accent); color: var(--accent-fg); }
+  .pill { margin-left: auto; border-radius: 999px; padding: 1px 10px; font-weight: 700; }
+  .pill.pending { background: var(--warn-bg); color: var(--warn); }
+  .pill.approved { background: var(--ok-bg); color: var(--ok); }
+  .pill.posted { background: var(--info-bg); color: var(--info); }
+  .pill.rejected, .pill.failed { background: var(--bad-bg); color: var(--bad); }
+  textarea { width: 100%; box-sizing: border-box; min-height: 9em; font: inherit; line-height: 1.6; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; resize: vertical; }
+  textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  textarea[readonly] { background: transparent; border-color: transparent; padding: 0; min-height: 0; resize: none; }
+  .count { font-size: .75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; margin-top: -6px; }
+  .count.over { color: var(--bad); font-weight: 700; }
+  .product { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+  .product a { color: var(--accent); }
+  .photo { max-width: 100%; border-radius: 8px; aspect-ratio: 1; object-fit: cover; width: 220px; }
+  .err { font-size: .8rem; color: var(--bad); background: var(--bad-bg); border-radius: 6px; padding: 6px 8px; overflow-wrap: anywhere; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions button { font: inherit; font-weight: 700; border-radius: 8px; padding: 8px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+  .actions .approve { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); flex: 1; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 24px; color: var(--muted); text-align: center; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: .9rem; }
+  @media (prefers-reduced-motion: no-preference) { .card { transition: border-color .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>にゃん具 投稿承認ボード</h1>
+    <p class="sub">承認した投稿だけが、朝7時半と夜21時に自動で出るよ。承認しなければ何も出ない。</p>
+  </header>
+  <div class="summary" id="summary"><span>読み込み中…</span></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-pending" aria-selected="true" data-filter="pending">承認待ち</button>
+    <button role="tab" id="tab-upcoming" aria-selected="false" data-filter="upcoming">承認済み</button>
+    <button role="tab" id="tab-all" aria-selected="false" data-filter="all">すべて</button>
+  </div>
+  <main id="list">
+    <div class="empty">下書きを読み込んでるところ。毎朝6時台に、その日の下書きがここに届くよ。</div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+  const STATUS_LABEL = { pending: "承認待ち", approved: "承認済み", posted: "公開済み", rejected: "却下", failed: "失敗" };
+  const TYPE_LABEL = { reaction: "猫の反応", compare: "比較", problem: "悩み解決", review: "正直レビュー", question: "問いかけ", sale: "セール", daily: "日常" };
+  const SLOT_LABEL = { am: "朝 7:30", pm: "夜 21:00" };
+  const LIMIT = { threads: 500, instagram: 2200 };
+  const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+
+  let filter = "pending";
+  try { filter = localStorage.getItem("nyangu-filter") || "pending"; } catch (e) {}
+  let docs = [];
+  let db = null;
+  let canWrite = false;
+  const editing = new Map();
+
+  const $ = (id) => document.getElementById(id);
+
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => (t.hidden = true), 2200);
+  }
+
+  function dayLabel(date) {
+    const d = new Date(date + "T00:00:00+09:00");
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+    const key = (x) => x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate();
+    const diff = key(d) - key(today);
+    const base = `${d.getMonth() + 1}月${d.getDate()}日（${WEEK[d.getDay()]}）`;
+    return diff === 0 ? `今日 ${base}` : diff === 1 ? `明日 ${base}` : base;
+  }
+
+  function renderSummary() {
+    const n = (s) => docs.filter((d) => d.data.status === s).length;
+    $("summary").innerHTML = "";
+    [["承認待ち", n("pending")], ["承認済み", n("approved")], ["公開済み", n("posted")], ["失敗", n("failed")]].forEach(([k, v]) => {
+      const s = document.createElement("span");
+      s.innerHTML = `${k} <b></b>`;
+      s.querySelector("b").textContent = v;
+      $("summary").append(s);
+    });
+  }
+
+  function visible() {
+    if (filter === "pending") return docs.filter((d) => d.data.status === "pending");
+    if (filter === "upcoming") return docs.filter((d) => d.data.status === "approved");
+    return docs;
+  }
+
+  function render() {
+    renderSummary();
+    document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.filter === filter)));
+    const list = $("list");
+    list.innerHTML = "";
+    const items = visible();
+    if (!items.length) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = filter === "pending" ? "承認待ちの下書きはないよ。毎朝6時台に新しい下書きが届く。" : "まだ何もないよ。";
+      list.append(e);
+      return;
+    }
+    const byDate = new Map();
+    items.forEach((d) => {
+      const k = d.data.date || "日付なし";
+      if (!byDate.has(k)) byDate.set(k, []);
+      byDate.get(k).push(d);
+    });
+    [...byDate.keys()].sort().reverse().forEach((date) => {
+      const sec = document.createElement("section");
+      sec.className = "day";
+      const h = document.createElement("h2");
+      h.textContent = date === "日付なし" ? date : dayLabel(date);
+      sec.append(h);
+      byDate.get(date).sort((a, b) => (a.data.slot || "").localeCompare(b.data.slot || "")).forEach((d) => sec.append(card(d)));
+      list.append(sec);
+    });
+  }
+
+  function card(d) {
+    const x = d.data;
+    const el = document.createElement("article");
+    el.className = "card";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const chips = [[x.platform === "instagram" ? "Instagram" : "Threads", "chip " + (x.platform || "threads")], [SLOT_LABEL[x.slot] || x.slot || "", "chip"], [TYPE_LABEL[x.type] || x.type || "", "chip"]];
+    chips.forEach(([t, c]) => { if (!t) return; const s = document.createElement("span"); s.className = c; s.textContent = t; meta.append(s); });
+    const pill = document.createElement("span");
+    pill.className = "pill " + (x.status || "pending");
+    pill.textContent = STATUS_LABEL[x.status] || x.status;
+    meta.append(pill);
+    el.append(meta);
+
+    if (x.image) {
+      const img = document.createElement("img");
+      img.className = "photo";
+      img.src = x.image;
+      img.alt = "投稿に使う写真";
+      el.append(img);
+    }
+
+    const editable = canWrite && (x.status === "pending" || x.status === "approved" || x.status === "rejected");
+    const ta = document.createElement("textarea");
+    ta.id = "text-" + d.id;
+    ta.value = editing.has(d.id) ? editing.get(d.id) : x.text || "";
+    ta.readOnly = !editable;
+    ta.setAttribute("aria-label", "投稿の本文");
+    el.append(ta);
+    const limit = LIMIT[x.platform] || 500;
+    const count = document.createElement("div");
+    const updateCount = () => {
+      const len = [...ta.value].length;
+      count.textContent = `${len} / ${limit}文字`;
+      count.className = "count" + (len > limit ? " over" : "");
+    };
+    updateCount();
+    if (editable) el.append(count);
+
+    if (x.product && x.product.name) {
+      const p = document.createElement("div");
+      p.className = "product";
+      p.append("商品: ");
+      const a = document.createElement("a");
+      a.href = x.product.url || "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = x.product.name.slice(0, 60);
+      p.append(a);
+      if (x.product.price) p.append(`（${Number(x.product.price).toLocaleString()}円）`);
+      el.append(p);
+    }
+    if (x.error) {
+      const er = document.createElement("div");
+      er.className = "err";
+      er.textContent = "エラー: " + x.error;
+      el.append(er);
+    }
+
+    if (editable) {
+      const act = document.createElement("div");
+      act.className = "actions";
+      const save = (status, msg) => async () => {
+        const text = ta.value.trim();
+        if ([...text].length > limit) { toast(`${limit}文字を超えてるから短くしてね`); return; }
+        act.querySelectorAll("button").forEach((b) => (b.disabled = true));
+        try {
+          const patch = { text, updatedAt: new Date().toISOString() };
+          if (status) patch.status = status;
+          await db.collection("drafts").doc(d.id).update(patch);
+          editing.delete(d.id);
+          toast(msg);
+        } catch (e) {
+          toast("保存できなかった。もう一度押してみて");
+          act.querySelectorAll("button").forEach((b) => (b.disabled = false));
+        }
+      };
+      ta.addEventListener("input", () => { editing.set(d.id, ta.value); updateCount(); dirty.hidden = ta.value === (x.text || ""); });
+      if (x.status !== "approved") {
+        const ok = document.createElement("button");
+        ok.className = "approve";
+        ok.textContent = "承認する";
+        ok.onclick = save("approved", "承認した。時間になったら公開されるよ");
+        act.append(ok);
+      } else {
+        const back = document.createElement("button");
+        back.textContent = "承認を取り消す";
+        back.onclick = save("pending", "承認待ちに戻した");
+        act.append(back);
+      }
+      const dirty = document.createElement("button");
+      dirty.textContent = "文章だけ保存";
+      dirty.hidden = !editing.has(d.id) || editing.get(d.id) === (x.text || "");
+      dirty.onclick = save(null, "文章を保存した");
+      act.append(dirty);
+      if (x.status !== "rejected") {
+        const no = document.createElement("button");
+        no.textContent = "却下";
+        no.onclick = save("rejected", "却下した。この投稿は出ないよ");
+        act.append(no);
+      }
+      el.append(act);
+    }
+    return el;
+  }
+
+  document.querySelectorAll(".tabs button").forEach((b) =>
+    b.addEventListener("click", () => {
+      filter = b.dataset.filter;
+      try { localStorage.setItem("nyangu-filter", filter); } catch (e) {}
+      render();
+    })
+  );
+
+  (async () => {
+    db = await claude.use("db");
+    const user = await claude.use("user");
+    if (!db) {
+      $("list").innerHTML = '<div class="empty">ボードのデータを読み込めなかった。claude.aiにログインした状態で開いてね。</div>';
+      $("summary").innerHTML = "";
+      return;
+    }
+    canWrite = user ? (user.isOwner() || user.canEdit()) : false;
+    db.collection("drafts").onSnapshot(
+      (snap) => {
+        docs = snap.docs.filter((s) => s.exists).map((s) => ({ id: s.id, data: s.data() }));
+        render();
+      },
+      () => { $("list").innerHTML = '<div class="empty">下書きを読み込めなかった。ページを開き直してみて。</div>'; }
+    );
+  })();
+</script>
