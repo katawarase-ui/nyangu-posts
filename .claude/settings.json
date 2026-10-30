@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 scripts/threads_post.py:*)",
+      "Bash(python3 scripts/ig_post.py:*)"
+    ]
+  }
+}
