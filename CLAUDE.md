@@ -8,7 +8,9 @@
 - トークンやキーをコード、ファイル、コミット、チャットに書かない。Threads と Instagram のトークンは環境「nyangu」のネットワークシークレットが Authorization ヘッダーに自動で付ける。楽天の値は環境変数 `RAKUTEN_APP_ID` `RAKUTEN_ACCESS_KEY` `RAKUTEN_AFFILIATE_ID`。
 - アフィリエイトリンクを含む投稿には必ず「#PR」を入れる（ステマ規制）。
 - 使っていない商品を使った風に書かない。実際に使った商品は `data/used_items.md` に載っているものだけ。それ以外は「気になってる」「レビューが多い」「売れてる」という書き方にする。
-- ショップの商品画像を Instagram に転載しない。Instagram は `photos/` にある自分の写真だけを使う。写真がなければ Instagram の下書きは作らない。
+- ショップの商品画像を Instagram に転載しない。Instagram は `photos/` にある画像だけを使う。写真がなければ Instagram の下書きは作らない。
+- `photos/` の `card-*.jpg` はフリー素材（Pexels など商用OKのもの）の猫写真に文字を載せたカード。出典は `data/photo_sources.csv` に1行ずつ記録し、`python3 scripts/make_card.py <元画像フォルダ>` で作る。素材の元画像はそのまま再配布になるのでリポジトリに置かない（`/mnt/project-files/nyangu/stock-raw/` に保管）。
+- 素材の猫は自分の猫ではない。キャプションで「うちの子」「この子が使ってる」のように書かない。カードの内容（対策・コツ）に沿ったキャプションにする。人の顔やブランドロゴが目立つ素材は使わない。
 
 ## 承認ボード
 
