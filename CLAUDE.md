@@ -19,10 +19,12 @@
 - フィールド: `date`（YYYY-MM-DD）, `slot`, `platform`, `type`（reaction / compare / problem / review / question / sale）, `text`（本文）, `image`（Instagram の画像URL。Threads は空）, `product`（`{name, price, url}`。問いかけ型は空でよい）, `status`（pending / approved / rejected / posted / failed）, `postId`, `error`, `createdAt`, `postedAt`。
 - 書き込むときは読んだ `version` を `if_version` に必ず渡す。
 
-## 毎朝の下書き作成（6時台）
+## 前日夜の下書き作成（19時台、翌日分）
+
+下書きは投稿の前日夜に作り、ふくながが前日22時ごろに承認する。作る下書きの `date` は**明日（日本時間）**。
 
 1. `python3 scripts/rakuten.py ranking` でペットの売れ筋を取る（`rank` 順）。猫用のものだけ候補にする。過去の売れ筋（猫トイレ・砂の飛び散り防止、消臭スプレー、電動の魚おもちゃ、シニア猫フード、猫柄雑貨）に近いものを優先し、直近7日の下書きと同じ商品は避ける。キーワードで探すときは `python3 scripts/rakuten.py search "猫 トイレ"`。
-2. 曜日の型で、その日の朝(am)と夜(pm)の Threads 下書きを1本ずつ作る。月・土=問いかけ（リンクなし）、火=猫の反応、木=比較・結論、金=正直レビュー、水・日=日常か悩み解決。リンク付きとリンクなしがだいたい2対1になるようにする。
+2. 曜日の型で、明日の朝(am)と夜(pm)の Threads 下書き（曜日は明日の曜日で決める）を1本ずつ作る。月・土=問いかけ（リンクなし）、火=猫の反応、木=比較・結論、金=正直レビュー、水・日=日常か悩み解決。リンク付きとリンクなしがだいたい2対1になるようにする。
 3. Threads は500文字以内、1行目で結論か問いかけ。最後にリンクと「#PR」。
 4. Instagram は `photos/` に未使用の写真があるとき（`data/used_photos.txt` に載っていないもの）だけ、週3本を上限に下書きを作る。画像URLは `https://raw.githubusercontent.com/katawarase-ui/nyangu-posts/main/photos/<ファイル名>`。キャプション末尾に「商品はプロフィールの楽天Roomにまとめてるよ」と「#PR #猫のいる暮らし #猫グッズ #楽天room」。
 5. 下書きを `status: pending` で承認ボードに書き込む。
