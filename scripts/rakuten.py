@@ -3,9 +3,11 @@
 使い方:
   python3 scripts/rakuten.py ranking [genreId]     # 既定はペット 101213
   python3 scripts/rakuten.py search "猫 トイレ"
+  python3 scripts/rakuten.py link "https://item.rakuten.co.jp/<ショップ>/<商品>/"   # 商品ページURLからアフィリエイトリンクを作る
 """
 import json
 import sys
+import urllib.parse
 
 from common import env, request
 
@@ -56,12 +58,22 @@ def search(keyword, hits=10):
     return [_item(i) for i in data.get("Items", [])]
 
 
+def link(item_url):
+    """楽天市場の商品ページURLに自分のアフィリエイトIDを付けたリンクを返す（APIは呼ばない）。"""
+    if not item_url.startswith("https://item.rakuten.co.jp/"):
+        raise RuntimeError("item.rakuten.co.jp の商品ページURLを渡してね")
+    affiliate_id = env("RAKUTEN_AFFILIATE_ID")
+    return f"https://hb.afl.rakuten.co.jp/hgc/{affiliate_id}/?pc={urllib.parse.quote(item_url, safe='')}"
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "ranking"
     if cmd == "ranking":
         result = ranking(sys.argv[2] if len(sys.argv) > 2 else "101213")
     elif cmd == "search":
         result = search(sys.argv[2])
+    elif cmd == "link":
+        result = {"url": link(sys.argv[2])}
     else:
         sys.exit(__doc__)
     print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -66,6 +66,9 @@
   .pill.rejected, .pill.failed { background: var(--bad-bg); color: var(--bad); }
   textarea { width: 100%; box-sizing: border-box; min-height: 9em; font: inherit; line-height: 1.6; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; resize: vertical; }
   textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .reply-to { font-size: .8rem; color: var(--muted); margin: 0 0 6px; }
+  .reply-label { font-size: .8rem; color: var(--muted); margin: 10px 0 4px; padding-left: 10px; border-left: 3px solid var(--line); }
+  .reply textarea { min-height: 6em; }
   textarea[readonly] { background: transparent; border-color: transparent; padding: 0; min-height: 0; resize: none; }
   .count { font-size: .75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; margin-top: -6px; }
   .count.over { color: var(--bad); font-weight: 700; }
@@ -101,7 +104,7 @@
 
 <script>
   const STATUS_LABEL = { pending: "承認待ち", approved: "承認済み", posted: "公開済み", rejected: "却下", failed: "失敗" };
-  const TYPE_LABEL = { reaction: "猫の反応", compare: "比較", problem: "悩み解決", review: "正直レビュー", question: "問いかけ", sale: "セール", daily: "日常" };
+  const TYPE_LABEL = { reaction: "猫の反応", compare: "比較", problem: "悩み解決", review: "正直レビュー", roundup: "みんなの声まとめ", question: "問いかけ", sale: "セール", daily: "日常" };
   const SLOT_LABEL = { am: "朝 7:30", pm: "夜 21:00" };
   const LIMIT = { threads: 500, instagram: 2200 };
   const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
@@ -213,6 +216,18 @@
     }
 
     const editable = canWrite && (x.status === "pending" || x.status === "approved" || x.status === "rejected");
+    if (x.replyTo) {
+      const rt = document.createElement("p");
+      rt.className = "reply-to";
+      rt.append("↳ 既存の投稿への返信として出す: ");
+      const a = document.createElement("a");
+      a.href = x.replyToUrl || "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = x.replyToLabel || x.replyTo;
+      rt.append(a);
+      el.append(rt);
+    }
     const ta = document.createElement("textarea");
     ta.id = "text-" + d.id;
     ta.value = editing.has(d.id) ? editing.get(d.id) : x.text || "";
@@ -228,6 +243,30 @@
     };
     updateCount();
     if (editable) el.append(count);
+
+    // 返信のつながり（本文の下に自分で返信してリンクを並べる）
+    const replyAreas = [];
+    (Array.isArray(x.replies) ? x.replies : []).forEach((r, i) => {
+      const box = document.createElement("div");
+      box.className = "reply";
+      const label = document.createElement("div");
+      label.className = "reply-label";
+      label.textContent = `返信${i + 1}（本文の下につなげる）`;
+      const rta = document.createElement("textarea");
+      rta.value = editing.has(d.id + "#" + i) ? editing.get(d.id + "#" + i) : r || "";
+      rta.readOnly = !editable;
+      rta.setAttribute("aria-label", `返信${i + 1}の本文`);
+      box.append(label, rta);
+      if (editable) {
+        const c = document.createElement("div");
+        const upd = () => { const len = [...rta.value].length; c.textContent = `${len} / ${limit}文字`; c.className = "count" + (len > limit ? " over" : ""); };
+        upd();
+        rta.addEventListener("input", () => { editing.set(d.id + "#" + i, rta.value); upd(); el.dispatchEvent(new Event("reply-edit")); });
+        box.append(c);
+      }
+      replyAreas.push(rta);
+      el.append(box);
+    });
 
     if (x.product && x.product.name) {
       const p = document.createElement("div");
@@ -255,12 +294,16 @@
       const save = (status, msg) => async () => {
         const text = ta.value.trim();
         if ([...text].length > limit) { toast(`${limit}文字を超えてるから短くしてね`); return; }
+        const replies = replyAreas.map((r) => r.value.trim());
+        if (replies.some((r) => [...r].length > limit)) { toast(`返信が${limit}文字を超えてるから短くしてね`); return; }
         act.querySelectorAll("button").forEach((b) => (b.disabled = true));
         try {
           const patch = { text, updatedAt: new Date().toISOString() };
+          if (replyAreas.length) patch.replies = replies;
           if (status) patch.status = status;
           await db.collection("drafts").doc(d.id).update(patch);
           editing.delete(d.id);
+          replyAreas.forEach((_, i) => editing.delete(d.id + "#" + i));
           toast(msg);
         } catch (e) {
           toast("保存できなかった。もう一度押してみて");
@@ -283,6 +326,8 @@
       const dirty = document.createElement("button");
       dirty.textContent = "文章だけ保存";
       dirty.hidden = !editing.has(d.id) || editing.get(d.id) === (x.text || "");
+      if (replyAreas.some((_, i) => editing.has(d.id + "#" + i))) dirty.hidden = false;
+      el.addEventListener("reply-edit", () => { dirty.hidden = false; });
       dirty.onclick = save(null, "文章を保存した");
       act.append(dirty);
       if (x.status !== "rejected") {
