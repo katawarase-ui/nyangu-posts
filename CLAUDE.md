@@ -15,8 +15,9 @@
 ## 承認ボード
 
 - URL: data/board_url.txt に書いてある Artifact。`ArtifactData` ツールで読み書きする。
-- コレクション `drafts`。ドキュメントIDは `YYYY-MM-DD-<slot>-<platform>`（slot は am / pm、platform は threads / instagram）。
-- フィールド: `date`（YYYY-MM-DD）, `slot`, `platform`, `type`（reaction / compare / problem / review / question / sale）, `text`（本文）, `image`（Instagram の画像URL。Threads は空）, `product`（`{name, price, url}`。問いかけ型は空でよい）, `status`（pending / approved / rejected / posted / failed）, `postId`, `error`, `createdAt`, `postedAt`。
+- コレクション `drafts`。ドキュメントIDは `YYYY-MM-DD-<slot>-<platform>`（slot は am / pm、platform は threads / instagram）。同じ枠に2本目を入れるときは末尾に `-2` を付ける（例: `2026-11-06-pm-threads-2`）。
+- フィールド: `date`（YYYY-MM-DD）, `slot`, `platform`, `type`（reaction / compare / problem / review / question / sale / roundup）, `text`（本文）, `image`（Instagram の画像URL。Threads は空）, `product`（`{name, price, url}`。問いかけ型は空でよい）, `status`（pending / approved / rejected / posted / failed）, `postId`, `error`, `createdAt`, `postedAt`。
+- 返信のつながり（Threads だけ）: `replies`（本文の下に自分でつなげる返信の本文の配列。2〜3本）, `replyIds`（公開後の返信のID）。既存の投稿の下に返信として出すときは `replyTo`（相手の投稿ID）, `replyToLabel`（ボードに出す説明）, `replyToUrl`（その投稿のURL）。承認はボードで本文と返信をまとめて1回。
 - 書き込むときは読んだ `version` を `if_version` に必ず渡す。
 
 ## 前日夜の下書き作成（19時台、翌日分）
@@ -27,13 +28,24 @@
 2. 曜日の型で、明日の朝(am)と夜(pm)の Threads 下書き（曜日は明日の曜日で決める）を1本ずつ作る。月・土=問いかけ（リンクなし）、火=猫の反応、木=比較・結論、金=正直レビュー、水・日=日常か悩み解決。リンク付きとリンクなしがだいたい2対1になるようにする。
 3. Threads は500文字以内、1行目で結論か問いかけ。最後にリンクと「#PR」。
 4. Instagram は `photos/` に未使用の写真があるとき（`data/used_photos.txt` に載っていないもの）だけ、週3本を上限に下書きを作る。画像URLは `https://raw.githubusercontent.com/katawarase-ui/nyangu-posts/main/photos/<ファイル名>`。キャプション末尾に「商品はプロフィールの楽天Roomにまとめてるよ」と「#PR #猫のいる暮らし #猫グッズ #楽天room」。
-5. 下書きを `status: pending` で承認ボードに書き込む。
+5. 「みんなの声まとめ」（type: roundup）: `python3 scripts/threads_replies.py recent 4` で、2〜4日前の自分の問いかけ投稿に返信が5件以上ついていたら、明日の pm 枠の Threads をこれにする（その日の曜日の型より優先）。作り方は下の「みんなの声まとめ」。
+6. 下書きを `status: pending` で承認ボードに書き込む。
+
+### みんなの声まとめ（返信のつながりで商品リンクを並べる）
+
+問いかけで集まった答えを集計して、多かったものを紹介する。リンクは本文に入れず、本文の下に自分でつなげる返信に1本ずつ入れる（Threads はリンク付きの本文が表示されにくいため）。Room のコレクションは使わない。
+
+1. `python3 scripts/threads_replies.py <問いかけの投稿ID>` で返信を全部読み、出てきた商品・ジャンルを数える。返信した人の名前や文章をそのまま引用しない。
+2. 多かったものに近い商品を楽天のジャンル別ランキングから探す: `python3 scripts/rakuten.py ranking <genreId>`。猫用品 507524、猫のおもちゃ 206264、猫じゃらし 215363、ねずみのおもちゃ 404161、猫砂 204174、療法食 404149（ほかはペット全体 101213）。商品ページのURLがわかっていてランキングにないときは `python3 scripts/rakuten.py link "<item.rakuten.co.jp のURL>"` でリンクを作る。ランキングにも見つからないものは紹介しない（100均や家にあるものは本文で「タダで遊べる派も多かった」と触れるだけ）。
+3. `text`（本文）: 1行目で「◯件の答えで多かったのは…」と結論。TOP3の名前と、手作り派・100均派が多かった話など。リンクは入れず、最後に「商品は返信につなげたよ👇」と「#PR」。
+4. `replies`: 商品1つにつき1本、2〜3本。商品名・価格・レビュー件数と平均・「回答でも名前が多かった」などの理由、リンク、最後に「#PR」。どれも500文字以内。使ってない商品なので「使ってる」「うちの子が」とは書かない。
+5. `product` には1本目の返信の商品を入れる。元の問いかけの投稿にぶら下げたいとき（投稿がまだ見られているとき）は `replyTo` にその投稿IDを入れる。
 
 ## 公開（7時半と21時）
 
 1. 承認ボードの `drafts` から、今日の該当 slot（朝は am、夜は pm）で `status == approved` のものを読む。
-2. Threads は `python3 scripts/threads_post.py "<text>"`、Instagram は `python3 scripts/ig_post.py "<image>" "<text>"`。
-3. 成功したら `status: posted`, `postId`, `postedAt` を書く。Instagram で使った写真は `data/used_photos.txt` に追記してコミット。失敗したら `status: failed` と `error` を書いて、勝手にやり直さない。
+2. Threads は `python3 scripts/threads_post.py "<text>"`、Instagram は `python3 scripts/ig_post.py "<image>" "<text>"`。`replies` があるときは `python3 scripts/threads_post.py "<text>" "<replies[0]>" "<replies[1]>" ...`、`replyTo` があるときは先頭に `--reply-to <replyTo>` を付ける。本文と返信は承認されたものをそのまま渡す。
+3. 成功したら `status: posted`, `postId`, `postedAt`（返信があれば `replyIds` も）を書く。返信の途中で失敗したら、出せた `postId` / `replyIds` と `status: failed`, `error` を書いて、残りを勝手に出さない。Instagram で使った写真は `data/used_photos.txt` に追記してコミット。失敗したら `status: failed` と `error` を書いて、勝手にやり直さない。
 
 ## 毎週日曜の振り返り
 
