@@ -16,7 +16,7 @@
 
 - URL: data/board_url.txt に書いてある Artifact。`ArtifactData` ツールで読み書きする。
 - コレクション `drafts`。ドキュメントIDは `YYYY-MM-DD-<slot>-<platform>`（slot は am / pm、platform は threads / instagram）。同じ枠に2本目を入れるときは末尾に `-2` を付ける（例: `2026-11-06-pm-threads-2`）。
-- フィールド: `date`（YYYY-MM-DD）, `slot`, `platform`, `type`（reaction / compare / problem / review / question / sale / roundup）, `text`（本文）, `image`（Instagram の画像URL。Threads は空）, `product`（`{name, price, url}`。問いかけ型は空でよい）, `status`（pending / approved / rejected / posted / failed）, `postId`, `error`, `createdAt`, `postedAt`。
+- フィールド: `date`（YYYY-MM-DD）, `slot`, `platform`, `type`（reaction / compare / problem / review / question / sale / roundup）, `text`（本文）, `image`（Instagram の画像URL。ボードの表示用。Threads は空）, `video`（Instagram のリール動画URL。あればリールで出す）, `product`（`{name, price, url}`。問いかけ型は空でよい）, `status`（pending / approved / rejected / posted / failed）, `postId`, `error`, `createdAt`, `postedAt`。
 - 返信のつながり（Threads だけ）: `replies`（本文の下に自分でつなげる返信の本文の配列。2〜3本）, `replyIds`（公開後の返信のID）。既存の投稿の下に返信として出すときは `replyTo`（相手の投稿ID）, `replyToLabel`（ボードに出す説明）, `replyToUrl`（その投稿のURL）。承認はボードで本文と返信をまとめて1回。
 - 書き込むときは読んだ `version` を `if_version` に必ず渡す。
 
@@ -27,7 +27,8 @@
 1. `python3 scripts/rakuten.py ranking` でペットの売れ筋を取る（`rank` 順）。猫用のものだけ候補にする。過去の売れ筋（猫トイレ・砂の飛び散り防止、消臭スプレー、電動の魚おもちゃ、シニア猫フード、猫柄雑貨）に近いものを優先し、直近7日の下書きと同じ商品は避ける。キーワードで探すときは `python3 scripts/rakuten.py search "猫 トイレ"`。
 2. 曜日の型で、明日の朝(am)と夜(pm)の Threads 下書き（曜日は明日の曜日で決める）を1本ずつ作る。月・土=問いかけ（リンクなし）、火=猫の反応、木=比較・結論、金=正直レビュー、水・日=日常か悩み解決。リンク付きとリンクなしがだいたい2対1になるようにする。
 3. Threads は500文字以内、1行目で結論か問いかけ。最後にリンクと「#PR」。
-4. Instagram は `photos/` に未使用の写真があるとき（`data/used_photos.txt` に載っていないもの）だけ、週3本を上限に下書きを作る。画像URLは `https://raw.githubusercontent.com/katawarase-ui/nyangu-posts/main/photos/<ファイル名>`。キャプション末尾に「商品はプロフィールの楽天Roomにまとめてるよ」と「#PR #猫のいる暮らし #猫グッズ #楽天room」。
+4. Instagram は `photos/` に未使用の写真があるとき（`data/used_photos.txt` に載っていないもの）だけ、週3本を上限に下書きを作る。**リールで出す**（画像1枚のフィード投稿はフォロワー以外に届かず、10/31〜11/4の5本はリーチ0だった。7月のリールはフォロワー7人でも毎回リーチ約100）。`photos/reels/<カード名>.mp4` がなければ `python3 scripts/make_reel.py <カード名>.jpg` で作ってコミットしてから下書きにする。`image` は `https://raw.githubusercontent.com/katawarase-ui/nyangu-posts/main/photos/<ファイル名>`、`video` は `https://raw.githubusercontent.com/katawarase-ui/nyangu-posts/main/photos/reels/<カード名>.mp4`。
+   キャプションの1行目は悩みの言葉で始める（例「猫砂が飛び散るの、地味にストレスじゃない？」）。最後に「保存して見直してね」と「商品はプロフィールの楽天Roomにまとめてるよ」、ハッシュタグは「#PR」＋内容に合うもの4〜5個（例 #猫のいる暮らし #猫好きさんと繋がりたい #ねこ #猫トイレ #猫のおもちゃ）。#楽天room は付けない（猫好きは検索しないので）。
 5. 「みんなの声まとめ」（type: roundup）: `python3 scripts/threads_replies.py recent 4` で、2〜4日前の自分の問いかけ投稿に返信が5件以上ついていたら、明日の pm 枠の Threads をこれにする（その日の曜日の型より優先）。作り方は下の「みんなの声まとめ」。
 6. 下書きを `status: pending` で承認ボードに書き込む。
 
@@ -44,7 +45,7 @@
 ## 公開（7時半と21時）
 
 1. 承認ボードの `drafts` から、今日の該当 slot（朝は am、夜は pm）で `status == approved` のものを読む。
-2. Threads は `python3 scripts/threads_post.py "<text>"`、Instagram は `python3 scripts/ig_post.py "<image>" "<text>"`。`replies` があるときは `python3 scripts/threads_post.py "<text>" "<replies[0]>" "<replies[1]>" ...`、`replyTo` があるときは先頭に `--reply-to <replyTo>` を付ける。本文と返信は承認されたものをそのまま渡す。
+2. Threads は `python3 scripts/threads_post.py "<text>"`、Instagram は `video` があれば `python3 scripts/ig_post.py --reel "<video>" "<text>"`、なければ `python3 scripts/ig_post.py "<image>" "<text>"`。`replies` があるときは `python3 scripts/threads_post.py "<text>" "<replies[0]>" "<replies[1]>" ...`、`replyTo` があるときは先頭に `--reply-to <replyTo>` を付ける。本文と返信は承認されたものをそのまま渡す。
 3. 成功したら `status: posted`, `postId`, `postedAt`（返信があれば `replyIds` も）を書く。返信の途中で失敗したら、出せた `postId` / `replyIds` と `status: failed`, `error` を書いて、残りを勝手に出さない。Instagram で使った写真は `data/used_photos.txt` に追記してコミット。失敗したら `status: failed` と `error` を書いて、勝手にやり直さない。
 
 ## 毎週日曜の振り返り
