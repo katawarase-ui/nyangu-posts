@@ -75,6 +75,8 @@
   .product { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
   .product a { color: var(--accent); }
   .photo { max-width: 100%; border-radius: 8px; aspect-ratio: 1; object-fit: cover; width: 220px; }
+  .photo.reel { aspect-ratio: 9 / 16; width: 180px; background: #000; }
+  .chip.reel { background: var(--info-bg); color: var(--info); font-weight: 700; }
   .err { font-size: .8rem; color: var(--bad); background: var(--bad-bg); border-radius: 6px; padding: 6px 8px; overflow-wrap: anywhere; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .actions button { font: inherit; font-weight: 700; border-radius: 8px; padding: 8px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
@@ -189,6 +191,7 @@
     const meta = document.createElement("div");
     meta.className = "meta";
     const chips = [[x.platform === "instagram" ? "Instagram" : "Threads", "chip " + (x.platform || "threads")], [SLOT_LABEL[x.slot] || x.slot || "", "chip"], [TYPE_LABEL[x.type] || x.type || "", "chip"]];
+    if (x.platform === "instagram") chips.push([x.video ? "リール" : "画像1枚", x.video ? "chip reel" : "chip"]);
     chips.forEach(([t, c]) => { if (!t) return; const s = document.createElement("span"); s.className = c; s.textContent = t; meta.append(s); });
     const pill = document.createElement("span");
     pill.className = "pill " + (x.status || "pending");
@@ -196,7 +199,23 @@
     meta.append(pill);
     el.append(meta);
 
-    if (x.image) {
+    if (x.video) {
+      // リールの動画もボードに同梱した控え（photos/reels/）を表示する
+      const v = document.createElement("video");
+      v.className = "photo reel";
+      const m = x.video.match(/\/photos\/reels\/([^/?#]+)$/);
+      v.src = m ? "photos/reels/" + m[1] : x.video;
+      v.controls = true; v.muted = true; v.loop = true; v.playsInline = true; v.preload = "metadata";
+      if (x.image) { const pm = x.image.match(/\/photos\/([^/?#]+)$/); v.poster = pm ? "photos/" + pm[1] : x.image; }
+      v.setAttribute("aria-label", "投稿に使うリール動画");
+      v.onerror = () => {
+        const a = document.createElement("a");
+        a.href = x.video; a.target = "_blank"; a.rel = "noopener"; a.className = "product";
+        a.textContent = "リール動画をここで再生できなかった。タップで開く";
+        v.replaceWith(a);
+      };
+      el.append(v);
+    } else if (x.image) {
       const img = document.createElement("img");
       img.className = "photo";
       // ボードは外部の画像を読めないので、photos/ の写真はボードに一緒に載せた控えを表示する
