@@ -46,7 +46,8 @@
 
 1. 承認ボードの `drafts` から、今日の該当 slot（朝は am、夜は pm）で `status == approved` のものを読む。
 2. Threads は `python3 scripts/threads_post.py "<text>"`、Instagram は `video` があれば `python3 scripts/ig_post.py --reel "<video>" "<text>"`、なければ `python3 scripts/ig_post.py "<image>" "<text>"`。`replies` があるときは `python3 scripts/threads_post.py "<text>" "<replies[0]>" "<replies[1]>" ...`、`replyTo` があるときは先頭に `--reply-to <replyTo>` を付ける。本文と返信は承認されたものをそのまま渡す。
-3. 成功したら `status: posted`, `postId`, `postedAt`（返信があれば `replyIds` も）を書く。返信の途中で失敗したら、出せた `postId` / `replyIds` と `status: failed`, `error` を書いて、残りを勝手に出さない。Instagram で使った写真は `data/used_photos.txt` に追記してコミット。失敗したら `status: failed` と `error` を書いて、勝手にやり直さない。
+3. 投稿スクリプトは投稿前に /me の username が nyanguichiba か確かめ、違えば何も出さずに止まる。そのときは `status: failed` と `error` を書いて、ふくながに知らせる。
+4. 成功したら `status: posted`, `postId`, `postedAt`（返信があれば `replyIds` も）を書く。返信の途中で失敗したら、出せた `postId` / `replyIds` と `status: failed`, `error` を書いて、残りを勝手に出さない。Instagram で使った写真は `data/used_photos.txt` に追記してコミット。失敗したら `status: failed` と `error` を書いて、勝手にやり直さない。
 
 ## 毎週日曜の振り返り
 

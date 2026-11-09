@@ -6,6 +6,7 @@
   python3 scripts/threads_post.py --reply-to <投稿ID> "本文" ...  # 既存の投稿への返信として出す
   python3 scripts/threads_post.py --check                         # アカウント確認だけ（投稿しない）
 
+投稿の前に /me の username が nyanguichiba か確かめて、違えば何も出さずに止める。
 出力は {"id": 最初の投稿のID, "replyIds": [返信のID...]}。
 返信の途中で失敗したら、出せたところまでのIDと error を出して終了コード1で終わる（やり直さない）。
 """
@@ -13,7 +14,7 @@ import json
 import sys
 import time
 
-from common import request
+from common import ensure_account, request
 
 BASE = "https://graph.threads.net/v1.0"
 LIMIT = 500
@@ -65,6 +66,7 @@ if __name__ == "__main__":
         if len(args) < 3:
             sys.exit(__doc__)
         reply_to, args = args[1], args[2:]
+    ensure_account(me(), "Threads")
     result = post_chain(args, reply_to)
     print(json.dumps(result, ensure_ascii=False))
     if "error" in result:
