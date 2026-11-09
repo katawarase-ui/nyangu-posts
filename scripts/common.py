@@ -30,3 +30,13 @@ def env(name, required=True):
     if required and not value:
         raise RuntimeError(f"環境変数 {name} が設定されていない")
     return value
+
+
+EXPECTED_USERNAME = "nyanguichiba"
+
+
+def ensure_account(info, service):
+    """投稿前に、トークンのアカウントが nyanguichiba か確かめる。違えば止める。"""
+    name = (info or {}).get("username")
+    if name != EXPECTED_USERNAME:
+        raise SystemExit(f"{service}のアカウントが {EXPECTED_USERNAME} じゃない（今は {name}）。投稿を中止した")
