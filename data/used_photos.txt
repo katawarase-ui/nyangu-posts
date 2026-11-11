@@ -5,3 +5,4 @@ card-senior-01.jpg
 card-food-01.jpg
 card-sleep-02.jpg
 card-toy-01.jpg
+card-rusuban-01.jpg
