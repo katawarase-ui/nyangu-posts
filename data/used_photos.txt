@@ -9,5 +9,6 @@ card-rusuban-01.jpg
 card-toy-02.jpg
 card-toy-03.jpg
 card-winter-01.jpg
+card-water-01.jpg
 card-toy-04.jpg
 card-smell-02.jpg
